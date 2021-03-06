@@ -29,7 +29,7 @@ def checkpoint(filename, model, optimizer, trained_epoch, config, global_step):
         logger.warning("Cannot save models with error %s, continue anyway" % str(e))
 
 
-def train(parameters, config, gpu_list, do_test=False):
+def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
     epoch = config.getint("train", "epoch")
     batch_size = config.getint("train", "batch_size")
 
@@ -104,7 +104,7 @@ def train(parameters, config, gpu_list, do_test=False):
             loss.backward()
             optimizer.step()
 
-            if step % output_time == 0:
+            if step % output_time == 0 and local_rank <= 0:
                 output_info = output_function(acc_result, config)
 
                 delta_t = timer() - start_time
@@ -115,21 +115,24 @@ def train(parameters, config, gpu_list, do_test=False):
 
             global_step += 1
             writer.add_scalar(config.get("output", "model_name") + "_train_iter", float(loss), global_step)
-            
-        output_info = output_function(acc_result, config)
-        delta_t = timer() - start_time
-        output_value(current_epoch, "train", "%d/%d" % (step + 1, total_len), "%s/%s" % (
-            gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
-                     "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
+            break
+
+        if local_rank <= 0:
+            output_info = output_function(acc_result, config)
+            delta_t = timer() - start_time
+            output_value(current_epoch, "train", "%d/%d" % (step + 1, total_len), "%s/%s" % (
+                gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
+                        "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
 
         if step == -1:
             logger.error("There is no data given to the model in this epoch, check your data.")
             raise NotImplementedError
 
-        checkpoint(os.path.join(output_path, "%d.pkl" % current_epoch), model, optimizer, current_epoch, config,
-                   global_step)
-        writer.add_scalar(config.get("output", "model_name") + "_train_epoch", float(total_loss) / (step + 1),
-                          current_epoch)
+        if local_rank <= 0:
+            checkpoint(os.path.join(output_path, "%d.pkl" % current_epoch), model, optimizer, current_epoch, config,
+                    global_step)
+            writer.add_scalar(config.get("output", "model_name") + "_train_epoch", float(total_loss) / (step + 1),
+                            current_epoch)
 
         if current_epoch % test_time == 0:
             with torch.no_grad():

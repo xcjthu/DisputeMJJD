@@ -47,6 +47,7 @@ def output_value(epoch, mode, step, time, loss, info, end, config):
 
 def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode="valid"):
     model.eval()
+    local_rank = config.getint('distributed', 'local_rank')
 
     acc_result = None
     total_loss = 0
@@ -75,7 +76,7 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         total_loss += float(loss)
         cnt += 1
 
-        if step % output_time == 0:
+        if step % output_time == 0 and local_rank <= 0:
             delta_t = timer() - start_time
 
             output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
@@ -86,13 +87,25 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         logger.error("There is no data given to the model in this epoch, check your data.")
         raise NotImplementedError
 
-    delta_t = timer() - start_time
-    output_info = output_function(acc_result, config)
-    output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
-        gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
-                 "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
+    if config.getboolean("distributed", "use"):
+        shape = len(acc_result)
+        mytensor = torch.LongTensor([acc_result[key] for key in acc_result]).to(gpu_list[local_rank])
+        mylist = [torch.LongTensor(shape).to(gpu_list[local_rank]) for i in range(config.getint('distributed', 'gpu_num'))]
+        torch.distributed.all_gather(mylist, mytensor)#, 0)
+        if local_rank == 0:
+            mytensor = sum(mylist)
+            index = 0
+            for key in acc_result:
+                acc_result[key] = int(mytensor[index])
+                index += 1
+    if local_rank <= 0:
+        delta_t = timer() - start_time
+        output_info = output_function(acc_result, config)
+        output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
+            gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
+                    "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
 
-    writer.add_scalar(config.get("output", "model_name") + "_eval_epoch", float(total_loss) / (step + 1),
-                      epoch)
+        writer.add_scalar(config.get("output", "model_name") + "_eval_epoch", float(total_loss) / (step + 1),
+                        epoch)
 
     model.train()

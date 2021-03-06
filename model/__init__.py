@@ -1,7 +1,11 @@
 from .model.CNN import TextCNN
+from .model.Bert import Bert
+from .model.ParaBert import ParaBert
 
 model_list = {
-    "CNN": TextCNN
+    "CNN": TextCNN,
+    "BERT": Bert,
+    "ParaBert": ParaBert,
 }
 
 

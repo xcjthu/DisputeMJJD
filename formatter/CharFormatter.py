@@ -14,6 +14,7 @@ class CharFormatter(BasicFormatter):
         self.mode = mode
         self.mapping = json.load(open(config.get("data", "mapping_file"), "r", encoding="utf8"))
         self.multi = config.getboolean("data", "multi")
+        self.label2num = json.load(open('/data/disk1/private/xcj/MJJDInfoExtract/SimilarCase/code/xcjshr/data/court_view/label2num.json', 'r'))
 
     def tokenize(self, text):
         res = []
@@ -49,7 +50,7 @@ class CharFormatter(BasicFormatter):
                         else:
                             label[-1].append(0)
                 else:
-                    label.append(self.mapping["name2id"][temp["label"]])
+                    label.append(self.mapping["name2id"][temp["label"][0]])
 
         input = torch.LongTensor(input)
         if mode != "test":

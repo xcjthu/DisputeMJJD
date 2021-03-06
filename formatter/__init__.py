@@ -2,12 +2,16 @@ import logging
 
 from .Basic import BasicFormatter
 from .CharFormatter import CharFormatter
+from .BertFormatter import BertFormatter
+from .ParaBertFormatter import ParaBertFormatter
 
 logger = logging.getLogger(__name__)
 
 formatter_list = {
     "Basic": BasicFormatter,
-    "Char": CharFormatter
+    "Char": CharFormatter,
+    "BERT": BertFormatter,
+    "ParaBert": ParaBertFormatter,
 }
 
 

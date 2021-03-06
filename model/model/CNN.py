@@ -21,6 +21,7 @@ class TextCNN(nn.Module):
         self.multi = config.getboolean("data", "multi")
         if self.multi:
             self.criterion = MultiLabelSoftmaxLoss(config, self.class_num)
+            #self.criterion = nn.BCEWithLogitsLoss()
             self.accuracy_function = multi_label_accuracy
             self.fc = nn.Linear(config.getint("model", "hidden_size"), self.class_num * 2)
         else:
