@@ -4,6 +4,7 @@ from .Basic import BasicFormatter
 from .CharFormatter import CharFormatter
 from .BertFormatter import BertFormatter
 from .ParaBertFormatter import ParaBertFormatter
+from .DenoiseBertFormatter import DenoiseBertFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ formatter_list = {
     "Char": CharFormatter,
     "BERT": BertFormatter,
     "ParaBert": ParaBertFormatter,
+    'Denoise': DenoiseBertFormatter,
 }
 
 

@@ -115,7 +115,7 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
 
             global_step += 1
             writer.add_scalar(config.get("output", "model_name") + "_train_iter", float(loss), global_step)
-            break
+            # break
 
         if local_rank <= 0:
             output_info = output_function(acc_result, config)
