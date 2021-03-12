@@ -3,6 +3,7 @@ import logging
 
 import formatter as form
 from dataset import dataset_list
+from torch.utils.data import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
 logger = logging.getLogger(__name__)

@@ -22,17 +22,18 @@ class DenoiseDataset(Dataset):
             for pid, para in enumerate(doc):
                 docs[did][pid]['label'] = [l for l in para['label'] if l in self.label2id]
                 labels += docs[did][pid]['label']
-            if len(labels) > 0:
+            if len(labels) > 0 or mode == 'test':
                 self.data.append(docs[did])
         self.paras = []
-        for doc in self.data:
-            for para in doc:
+        for docid, doc in enumerate(self.data):
+            for pid, para in enumerate(doc):
+                para['id'] = '%s_%s' % (docid, pid)
                 if len(para['para']) < 512:
                     self.paras.append(para)
                 else:
                     sents = para['para'].split('。')
                     for beg in range(0, len(sents), 4):
-                        self.paras.append({'para': '。'.join(sents[beg : beg + 8]), 'label': para['label']})
+                        self.paras.append({'para': '。'.join(sents[beg : beg + 8]), 'label': para['label'], 'id': para['id']})
         self.pos_paras = [p for p in self.paras if len(p['label']) > 0]
         self.neg_paras = [p for p in self.paras if len(p['label']) == 0]
         para_len = np.array([len(p['para']) for p in self.paras])
@@ -45,10 +46,16 @@ class DenoiseDataset(Dataset):
         print('==' * 25)
 
     def __getitem__(self, item):
-        return {
-            'pos': self.pos_paras[item],
-            'neg': random.choice(self.neg_paras),
-        }
+        if self.mode != 'test':
+            return {
+                'pos': self.pos_paras[item],
+                'neg': random.choice(self.neg_paras),
+            }
+        else:
+            return self.paras[item]
 
     def __len__(self):
-        return len(self.pos_paras)
+        if self.mode != 'test':
+            return len(self.pos_paras)
+        else:
+            return len(self.paras)

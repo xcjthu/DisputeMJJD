@@ -22,7 +22,17 @@ class DenoiseBert(nn.Module):
     def init_multi_gpu(self, device, config, *args, **params):
         return
 
+    def forward_test(self, data):
+        inputx = data['inputx'] # batch_size, seq_len
+        mask = data['mask']
+
+        _, bcls = self.encoder(inputx, attention_mask=mask)
+        score = self.score(bcls).squeeze(1)
+        return {"loss": 0, "output": list(zip(data['ids'], score.tolist()))}
+
     def forward(self, data, config, gpu_list, acc_result, mode):
+        if mode == 'test':
+            return self.forward_test(data)
         inputx = data['inputx'] # batch, seq_len
         neginputx = data['neginputx']
 
