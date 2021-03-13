@@ -75,7 +75,7 @@ class ParaDataset(Dataset):
 
     def __getitem__(self, item):
         if self.mode == 'train':
-            return [self.pos_paras[item]] + random.sample(self.neg_paras, 4)
+            return [self.pos_paras[item]] + random.sample(self.neg_paras, 3)
         else:
             return self.data[item]
 

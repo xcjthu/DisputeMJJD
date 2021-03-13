@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import json
 
-from transformers import BertModel
+from transformers import BertModel,RobertaModel
 
 from tools.accuracy_tool import multi_label_accuracy, single_label_top1_accuracy
 
@@ -12,12 +12,14 @@ class ParaBert(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
         super(ParaBert, self).__init__()
 
-        self.encoder = BertModel.from_pretrained('bert-base-chinese')
+        self.encoder = BertModel.from_pretrained('hfl/chinese-roberta-wwm-ext')
         labels = json.load(open(config.get('data', 'label2num'), 'r'))
         self.class_num = len([l for l in labels if labels[l] >= 20]) + 1
 
         self.hidden_size = 768
-        self.criterion = nn.CrossEntropyLoss()
+        weight = torch.ones(self.class_num).float()
+        weight[0] = 0.3
+        self.criterion = nn.CrossEntropyLoss(weight=weight)
         self.accuracy_function = single_label_top1_accuracy
         self.fc = nn.Linear(self.hidden_size, self.class_num)
 
@@ -43,20 +45,23 @@ def accuracy_doc(score, label, config, acc_result):
     # label: para_num
     if acc_result is None:
         acc_result = {'right': 0, 'pre_num': 0, 'actual_num': 0, 'labelset': 0, 'doc_num': 0}
-
+    '''
     pre_res = torch.max(score, dim = 1)[1] # para_num
     predict = set(pre_res.tolist()) - {0} # merges.argsort()[:3].tolist()
     '''
-    predict = set()
-    pre_res = score.argsort()[:2].tolist()
-    for res in pre_res:
-        if res[0] == 0:
-            continue
-        else:
-            predict.add(res[0])
-            predict.add(res[1])
-    predict = predict - {0}
     '''
+    if len(predict) == 0:
+        score[:,0] -= 1000
+        tscore = torch.max(score, dim = 0)[0]
+        pre = torch.max(tscore, dim = 0)[1]
+        predict.add(pre)
+    '''
+    predict = set()
+    tscore = torch.max(torch.softmax(score, dim=1), dim=0)[0].tolist()
+    for index, s in enumerate(tscore):
+        if s > 0.15:
+            predict.add(index)
+    predict = predict - {0}
     lset = set(label.tolist()) - {0}
     assert len(lset) != 0
     #print(predict, lset)

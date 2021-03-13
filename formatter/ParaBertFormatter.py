@@ -1,4 +1,4 @@
-from transformers import BertTokenizer
+from transformers import BertTokenizer,RobertaTokenizer
 import json
 import torch
 import os
@@ -12,7 +12,7 @@ class ParaBertFormatter(BasicFormatter):
         super().__init__(config, mode, *args, **params)
         self.max_len = config.getint("train", "max_len")
         self.mode = mode
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        self.tokenizer = BertTokenizer.from_pretrained('hfl/chinese-roberta-wwm-ext')
 
         labels = json.load(open(config.get('data', 'label2num'), 'r'))
         self.label2id = {'NA': 0}
