@@ -44,6 +44,7 @@ if __name__ == "__main__":
     config.set('distributed', 'local_rank', args.local_rank)
     if config.getboolean("distributed", "use"):
         torch.cuda.set_device(gpu_list[args.local_rank])
+        logger.error(config.get("distributed", "backend"),'wwwwwww') #debug
         torch.distributed.init_process_group(backend=config.get("distributed", "backend"))
         config.set('distributed', 'gpu_num', len(gpu_list))
 
