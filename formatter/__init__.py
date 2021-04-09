@@ -5,6 +5,7 @@ from .CharFormatter import CharFormatter
 from .BertFormatter import BertFormatter
 from .ParaBertFormatter import ParaBertFormatter
 from .DenoiseBertFormatter import DenoiseBertFormatter
+from .SecondlevelBertFormatter import SecondlevelBertFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ formatter_list = {
     "BERT": BertFormatter,
     "ParaBert": ParaBertFormatter,
     'Denoise': DenoiseBertFormatter,
+    'SecondlevelBert': SecondlevelBertFormatter,
 }
 
 

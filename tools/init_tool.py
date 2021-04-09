@@ -39,7 +39,7 @@ def init_all(config, gpu_list, checkpoint, mode, *args, **params):
             logger.warning("No init_multi_gpu implemented in the model, use single gpu instead.")
 
     try:
-        parameters = torch.load(checkpoint)
+        parameters = torch.load(checkpoint, map_location=lambda storage, loc: storage)
         if hasattr(model, 'module'):
             model.module.load_state_dict(parameters["model"])
         else:

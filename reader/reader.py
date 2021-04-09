@@ -3,6 +3,7 @@ import logging
 
 import formatter as form
 from dataset import dataset_list
+from torch.utils.data import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
 logger = logging.getLogger(__name__)
@@ -72,12 +73,11 @@ def init_one_dataset(config, mode, *args, **params):
             sampler = DistributedSampler(dataset)
         else:
             sampler = RandomSampler(dataset)
-
         dataloader = DataLoader(dataset=dataset,
                                 batch_size=batch_size,
                                 #shuffle=shuffle,
                                 num_workers=reader_num,
-                                collate_fn=collate_fn[mode],
+                                collate_fn=collate_fn[mode], #
                                 drop_last=drop_last,
                                 sampler=sampler)
 

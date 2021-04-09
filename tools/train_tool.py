@@ -1,10 +1,10 @@
 import logging
 import os
 import torch
-from torch.autograd import Variable
-from torch.optim import lr_scheduler
-from tensorboardX import SummaryWriter
-import shutil
+from torch.autograd import Variable #封装tensor
+from torch.optim import lr_scheduler #调整学习率的方式
+from tensorboardX import SummaryWriter #可视化模型训练
+import shutil #高阶文件操作包
 from timeit import default_timer as timer
 
 from tools.eval_tool import valid, gen_time_str, output_value

@@ -8,7 +8,6 @@ from timeit import default_timer as timer
 
 logger = logging.getLogger(__name__)
 
-
 def gen_time_str(t):
     t = int(t)
     minute = t // 60
@@ -89,8 +88,11 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
 
     if config.getboolean("distributed", "use"):
         shape = len(acc_result)
-        mytensor = torch.LongTensor([acc_result[key] for key in acc_result]).to(gpu_list[local_rank])
+        mytensor = torch.LongTensor(list(acc_result.values())).to(gpu_list[local_rank])
         mylist = [torch.LongTensor(shape).to(gpu_list[local_rank]) for i in range(config.getint('distributed', 'gpu_num'))]
+        # print('99999',len(mylist))
+        # from IPython import embed
+        # embed()
         torch.distributed.all_gather(mylist, mytensor)#, 0)
         if local_rank == 0:
             mytensor = sum(mylist)

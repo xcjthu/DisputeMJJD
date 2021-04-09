@@ -7,7 +7,6 @@ from transformers import BertModel
 
 from tools.accuracy_tool import multi_label_accuracy, single_label_top1_accuracy
 
-
 class DenoiseBert(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
         super(DenoiseBert, self).__init__()
@@ -22,7 +21,17 @@ class DenoiseBert(nn.Module):
     def init_multi_gpu(self, device, config, *args, **params):
         return
 
+    def forward_test(self, data):
+        inputx = data['inputx'] # batch_size, seq_len
+        mask = data['mask']
+
+        _, bcls = self.encoder(inputx, attention_mask=mask)
+        score = self.score(bcls).squeeze(1)
+        return {"loss": 0, "output": list(zip(data['ids'], score.tolist()))}
+
     def forward(self, data, config, gpu_list, acc_result, mode):
+        if mode == 'test':
+            return self.forward_test(data)
         inputx = data['inputx'] # batch, seq_len
         neginputx = data['neginputx']
 
@@ -30,8 +39,11 @@ class DenoiseBert(nn.Module):
         negmask = data['negmask']
 
         batch = inputx.shape[0]
-        _, bcls = self.encoder(torch.cat([inputx, neginputx], dim = 0), attention_mask=torch.cat([mask, negmask], dim = 0))
-        score = self.score(bcls).squeeze(1)
+
+        res = self.encoder(torch.cat([inputx, neginputx], dim = 0), attention_mask=torch.cat([mask, negmask], dim = 0))
+        # from IPython import embed;
+        # embed()
+        score = self.score(res['pooler_output']).squeeze(1)
 
         pscore = score[:batch]
         nscore = score[batch:]
