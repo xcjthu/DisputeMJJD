@@ -6,7 +6,7 @@ from .BertFormatter import BertFormatter
 from .ParaBertFormatter import ParaBertFormatter
 from .DenoiseBertFormatter import DenoiseBertFormatter
 from .HierarchyFormatter import HierarchyFormatter
-
+from .LawformerFormatter import LawformerFormatter
 logger = logging.getLogger(__name__)
 
 formatter_list = {
@@ -16,6 +16,7 @@ formatter_list = {
     "ParaBert": ParaBertFormatter,
     'Denoise': DenoiseBertFormatter,
     "Hierarchy": HierarchyFormatter,
+    "Lawformer": LawformerFormatter
 }
 
 

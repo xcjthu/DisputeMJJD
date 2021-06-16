@@ -34,7 +34,7 @@ class Bert(nn.Module):
         inputx = data['input']
 
         _, bcls = self.encoder(inputx, attention_mask=data['mask'])
-        
+
         if self.multi:
             result = self.fc(bcls).view(-1, self.class_num)#, 2)
         else:

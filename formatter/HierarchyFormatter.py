@@ -17,12 +17,12 @@ class HierarchyFormatter(BasicFormatter):
         labels = json.load(open(config.get('data', 'label2num'), 'r'))
         self.label2id = {'NA': 0}
         for l in labels:
-            if labels[l] >= 20:
+            if labels[l] >= 10:
                 self.label2id[l] = len(self.label2id)
 
         self.label2id_2 = {'NA': 0}
         self.label32id2 = {'NA': 0}
-        
+
         for l in self.label2id:
             if l == 'NA':
                 continue
@@ -31,7 +31,7 @@ class HierarchyFormatter(BasicFormatter):
             if key not in self.label2id_2:
                 self.label2id_2[key] = len(self.label2id_2)
             self.label32id2[l] = self.label2id_2[key]
-            
+
         self.prefix = self.tokenizer.convert_tokens_to_ids(['[CLS]'] * 10)
 
         self.map = np.zeros((len(self.label2id), len(self.label2id_2)))
@@ -61,10 +61,13 @@ class HierarchyFormatter(BasicFormatter):
                 mask.append([1] * len(tokens) + [0] * (self.max_len - len(tokens)))
                 tokens += [self.tokenizer.pad_token_id] * (self.max_len - len(tokens))
                 inputx.append(tokens)
+        gatt = np.zeros((len(inputx), self.max_len))
+        gatt[:, :10] = 1
         return {
             'input': torch.LongTensor(inputx),
             'mask': torch.LongTensor(mask),
             'label': torch.LongTensor(label),
             'label2': torch.LongTensor(label_2),
             'map': torch.FloatTensor(self.map),
+            'gAtt': torch.LongTensor(gatt),
         }

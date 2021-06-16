@@ -29,7 +29,7 @@ def checkpoint(filename, model, optimizer, trained_epoch, config, global_step):
         logger.warning("Cannot save models with error %s, continue anyway" % str(e))
 
 
-def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
+def train(parameters, config, gpu_list, do_test=False, local_rank=-1, do_eval = False):
     epoch = config.getint("train", "epoch")
     batch_size = config.getint("train", "batch_size")
 
@@ -48,6 +48,13 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
     global_step = parameters["global_step"]
     output_function = parameters["output_function"]
 
+    writer = SummaryWriter(os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")),
+                           config.get("output", "model_name"))
+    if do_eval:
+        with torch.no_grad():
+            valid(model, parameters["valid_dataset"], 0, writer, config, gpu_list, output_function)
+        return
+
     if do_test:
         init_formatter(config, ["test"])
         test_dataset = init_test_dataset(config)
@@ -59,13 +66,13 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
     os.makedirs(os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")),
                 exist_ok=True)
 
-    writer = SummaryWriter(os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")),
-                           config.get("output", "model_name"))
 
     step_size = config.getint("train", "step_size")
     gamma = config.getfloat("train", "lr_multiplier")
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     exp_lr_scheduler.step(trained_epoch)
+
+    grad_accumulate = config.getint("train", "grad_accumulate")
 
     logger.info("Training start....")
 
@@ -78,6 +85,7 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
     for epoch_num in range(trained_epoch, epoch):
         start_time = timer()
         current_epoch = epoch_num
+        model.train()
 
         exp_lr_scheduler.step(current_epoch)
 
@@ -94,7 +102,7 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
                     else:
                         data[key] = Variable(data[key])
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
             results = model(data, config, gpu_list, acc_result, "train")
 
@@ -102,7 +110,10 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
             total_loss += float(loss)
 
             loss.backward()
-            optimizer.step()
+            if (step + 1) % grad_accumulate == 0:
+                optimizer.step()
+                model.zero_grad()
+            # optimizer.step()
 
             if step % output_time == 0 and local_rank <= 0:
                 output_info = output_function(acc_result, config)
@@ -135,6 +146,7 @@ def train(parameters, config, gpu_list, do_test=False, local_rank=-1):
                             current_epoch)
 
         if current_epoch % test_time == 0:
+            model.zero_grad()
             with torch.no_grad():
                 valid(model, parameters["valid_dataset"], current_epoch, writer, config, gpu_list, output_function)
                 if do_test:

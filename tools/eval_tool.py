@@ -69,12 +69,13 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
                     data[key] = Variable(data[key].cuda())
                 else:
                     data[key] = Variable(data[key])
-
+        # print(data.keys())
         results = model(data, config, gpu_list, acc_result, "valid")
 
         loss, acc_result = results["loss"], results["acc_result"]
         total_loss += float(loss)
         cnt += 1
+        # break
 
         if step % output_time == 0 and local_rank <= 0:
             delta_t = timer() - start_time
@@ -86,21 +87,27 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
     if step == -1:
         logger.error("There is no data given to the model in this epoch, check your data.")
         raise NotImplementedError
-
+    print("before gather")
     if config.getboolean("distributed", "use"):
         shape = len(acc_result)
         mytensor = torch.LongTensor([acc_result[key] for key in acc_result]).to(gpu_list[local_rank])
+        print(mytensor)
         mylist = [torch.LongTensor(shape).to(gpu_list[local_rank]) for i in range(config.getint('distributed', 'gpu_num'))]
         torch.distributed.all_gather(mylist, mytensor)#, 0)
+        # print("after gather")
+        print(mylist)
         if local_rank == 0:
             mytensor = sum(mylist)
+            print(mytensor)
             index = 0
             for key in acc_result:
                 acc_result[key] = int(mytensor[index])
                 index += 1
     if local_rank <= 0:
         delta_t = timer() - start_time
+        print("before output")
         output_info = output_function(acc_result, config)
+        print("after output")
         output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
             gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                     "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
@@ -108,4 +115,4 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         writer.add_scalar(config.get("output", "model_name") + "_eval_epoch", float(total_loss) / (step + 1),
                         epoch)
 
-    model.train()
+    # model.train()

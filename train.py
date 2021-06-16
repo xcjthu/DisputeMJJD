@@ -21,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument('--local_rank', type=int, help='local rank', default=-1)
     parser.add_argument('--do_test', help="do test while training or not", action="store_true")
     parser.add_argument('--comment', help="checkpoint file path", default=None)
+    parser.add_argument("--do_eval", action="store_true")
     args = parser.parse_args()
 
     configFilePath = args.config
@@ -59,4 +60,4 @@ if __name__ == "__main__":
         do_test = True
 
     print(args.comment)
-    train(parameters, config, gpu_list, do_test, args.local_rank)
+    train(parameters, config, gpu_list, do_test, args.local_rank, do_eval = args.do_eval)

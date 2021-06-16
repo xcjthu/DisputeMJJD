@@ -36,6 +36,7 @@ def init_all(config, gpu_list, checkpoint, mode, *args, **params):
         try:
             model = nn.parallel.DistributedDataParallel(model, device_ids = [params['local_rank']], find_unused_parameters = True)
         except Exception as e:
+            print(e)
             logger.warning("No init_multi_gpu implemented in the model, use single gpu instead.")
 
     try:
