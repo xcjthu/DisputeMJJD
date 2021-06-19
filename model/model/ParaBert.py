@@ -29,7 +29,8 @@ class ParaBert(nn.Module):
     def forward(self, data, config, gpu_list, acc_result, mode):
         inputx = data['input']
 
-        _, bcls = self.encoder(inputx, attention_mask=data['mask'])
+        out = self.encoder(inputx, attention_mask=data['mask'])
+        bcls = out["pooler_output"]
         result = self.fc(bcls).view(-1, self.class_num) # batch * (neg+1), class_num
         if mode == 'train':
             loss = self.criterion(result, data["label"])
@@ -37,7 +38,7 @@ class ParaBert(nn.Module):
             acc_result = accuracy(result, data["label"], config, acc_result)
             return {"loss": loss, "acc_result": acc_result}
         else:
-            acc_result = accuracy_doc(result, data["label"], config, acc_result)
+            acc_result = accuracy(result, data["label"], config, acc_result)
             return {"loss": 0, "acc_result": acc_result}
 
 def accuracy_doc(score, label, config, acc_result):

@@ -7,7 +7,7 @@ import numpy as np
 from formatter.Basic import BasicFormatter
 import random
 
-class ParaBertFormatter(BasicFormatter):
+class ParaBertPosFormatter(BasicFormatter):
     def __init__(self, config, mode, *args, **params):
         super().__init__(config, mode, *args, **params)
         self.max_len = config.getint("train", "max_len")
@@ -25,16 +25,15 @@ class ParaBertFormatter(BasicFormatter):
         inputx = []
         mask = []
         label = []
-        for paras in data:
-            for para in paras:
-                if len(para['label']) == 0:
-                    label.append(self.label2id['NA'])
-                else:
-                    label.append(self.label2id[random.choice(para['label'])])
-                tokens = self.tokenizer.encode(para['para'], max_length=self.max_len, add_special_tokens=True)
-                mask.append([1] * len(tokens) + [0] * (self.max_len - len(tokens)))
-                tokens += [self.tokenizer.pad_token_id] * (self.max_len - len(tokens))
-                inputx.append(tokens)
+        for para in data:
+            if len(para['label']) == 0:
+                label.append(self.label2id['NA'])
+            else:
+                label.append(self.label2id[random.choice(para['label'])])
+            tokens = self.tokenizer.encode(para['para'], max_length=self.max_len, add_special_tokens=True)
+            mask.append([1] * len(tokens) + [0] * (self.max_len - len(tokens)))
+            tokens += [self.tokenizer.pad_token_id] * (self.max_len - len(tokens))
+            inputx.append(tokens)
         return {
             'input': torch.LongTensor(inputx),
             'mask': torch.LongTensor(mask),
