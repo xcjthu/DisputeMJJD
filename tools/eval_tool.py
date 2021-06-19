@@ -15,6 +15,21 @@ def gen_time_str(t):
     second = t % 60
     return '%2d:%02d' % (minute, second)
 
+import code, traceback, signal
+
+def debug(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d={'_frame':frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+    message  = "Signal received : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    print(message)
+
+def listen():
+    signal.signal(signal.SIGUSR1, debug)  # Register handler
+
 
 def output_value(epoch, mode, step, time, loss, info, end, config):
     try:
@@ -46,6 +61,7 @@ def output_value(epoch, mode, step, time, loss, info, end, config):
 
 
 def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode="valid"):
+    listen()
     model.eval()
     local_rank = config.getint('distributed', 'local_rank')
 
@@ -83,27 +99,40 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
             output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                          "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
-
+    '''
     if step == -1:
         logger.error("There is no data given to the model in this epoch, check your data.")
-        raise NotImplementedError
-    print("before gather")
+        raise NotImplementedError()
+    print("before gather", local_rank)
     if config.getboolean("distributed", "use"):
-        shape = len(acc_result)
-        mytensor = torch.LongTensor([acc_result[key] for key in acc_result]).to(gpu_list[local_rank])
-        print(mytensor)
+        if type(acc_result) == list:
+            mytensor = torch.LongTensor([cl[key] for cl in acc_result for key in cl]).to(gpu_list[local_rank])
+        else:
+            mytensor = torch.LongTensor([acc_result[key] for key in acc_result]).to(gpu_list[local_rank])
+        shape = mytensor.shape
+        # print(mytensor)
         mylist = [torch.LongTensor(shape).to(gpu_list[local_rank]) for i in range(config.getint('distributed', 'gpu_num'))]
         torch.distributed.all_gather(mylist, mytensor)#, 0)
-        # print("after gather")
-        print(mylist)
+        print("after gather", local_rank)
+        if local_rank == 0:
+            print(mylist)
         if local_rank == 0:
             mytensor = sum(mylist)
-            print(mytensor)
+            # print(mytensor)
             index = 0
-            for key in acc_result:
-                acc_result[key] = int(mytensor[index])
-                index += 1
-    if local_rank <= 0:
+            if type(acc_result) == list:
+                ind = 0
+                for i in range(len(acc_result)):
+                    for key in acc_result[i].keys():
+                        acc_result[i][key] = int(mytensor[ind])
+                        ind += 1
+            else:
+                for key in acc_result:
+                    acc_result[key] = int(mytensor[index])
+                    index += 1
+    '''
+    # if local_rank <= 0:
+    if True:
         delta_t = timer() - start_time
         print("before output")
         output_info = output_function(acc_result, config)
@@ -114,5 +143,5 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
 
         writer.add_scalar(config.get("output", "model_name") + "_eval_epoch", float(total_loss) / (step + 1),
                         epoch)
-
+    torch.distributed.barrier()
     # model.train()

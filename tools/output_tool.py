@@ -43,16 +43,22 @@ def output_function1(data, config, *args, **params):
     return json.dumps(metric)
 
 def output_perlabel(data, config, *args, **params):
+    local_rank = config.getint('distributed', 'local_rank')
     for i in range(1, len(data)):
         d = data[i]
         if d["pre_num"] != 0 and d["actual_num"] != 0:
             data[i]["precision"] = d["right"] / d["pre_num"]
-            data[i]["recall"] = d["rigth"] / d["actual_num"]
+            data[i]["recall"] = d["right"] / d["actual_num"]
         else:
             data[i]["precision"] = 0
             data[i]["recall"] = 0
-    fout = open("result.txt", "a")
-    ret = json.dumps(data)
-    print(ret, file=fout)
+    fout = open("result%d.txt" % local_rank, "a")
+    ret = ""
+    for id, d in enumerate(data):
+        line = "%s\t%s" % (id, json.dumps(d))
+        print(line, file = fout)
+        ret += line + "\n"
+    # ret = json.dumps(data)
+    # print(ret, file=fout)
     fout.close()
     return ret

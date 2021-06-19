@@ -16,13 +16,16 @@ class HierarchyBert(nn.Module):
 
         # self.encoder = BertModel.from_pretrained('hfl/chinese-roberta-wwm-ext')
         # self.encoder = AutoModel.from_pretrained("thunlp/Lawformer")
-        self.encoder = AutoModel.from_pretrained("/data/disk1/private/xcj/MJJDInfoExtract/SimilarCase/code/LegalRoBERTa")
+        # self.encoder = AutoModel.from_pretrained("/data/disk1/private/xcj/MJJDInfoExtract/SimilarCase/code/LegalRoBERTa")
+        # self.hidden_size = 768
+        self.encoder = AutoModel.from_pretrained("hfl/chinese-legal-electra-large-discriminator")
+        self.hidden_size = self.encoder.config.hidden_size
         labels = json.load(open(config.get('data', 'label2num'), 'r'))
         min_data_num = 10
         self.class_num = len([l for l in labels if labels[l] >= min_data_num]) + 1
         self.class_num2 = len(set([l.split('/')[0] + '/' + l.split('/')[1] for l in labels if labels[l] >= min_data_num])) + 1
 
-        self.hidden_size = 768
+        
         weight = torch.ones(self.class_num).float()
         weight[0] = 0.3
         self.criterion = nn.CrossEntropyLoss(weight=weight)
@@ -80,7 +83,7 @@ class HierarchyBert(nn.Module):
             loss = loss + self.loss_para_space(data['map']) * 1e-5
             loss = loss + self.loss_output_space(data["map"], score2, score3) * 1e-5
 
-            pos_score = self.positive_score(clses).view(-1, 5)
+            pos_score = self.positive_score(clses).view(-1, 2)
             # loss = loss + 0.5 * self.criterion3(pos_score, torch.zeros(pos_score.shape[0], dtype=torch.long).to(pos_score.device))
 
             acc_result = accuracy(score3, pos_score, data["label"], config, acc_result)
@@ -96,7 +99,7 @@ class HierarchyBert(nn.Module):
 
         allscore = []
         posscore = []
-        max_num_per_batch = 8
+        max_num_per_batch = 1
         begin = 0
         while begin < batch:
             end = min(begin + max_num_per_batch, batch)
@@ -110,7 +113,7 @@ class HierarchyBert(nn.Module):
             posscore.append(pscore)
             begin = end
 
-        acc_result = accuracy_doc_top(torch.cat(allscore, dim = 0), data["label"], config, acc_result)
+        acc_result = accuracy_per_label(torch.cat(allscore, dim = 0), data["label"], config, acc_result)
         # acc_result = accuracy_doc_pos(torch.cat(allscore, dim = 0), torch.cat(posscore, dim = 0), data["label"], config, acc_result)
         return {"loss": 0, "acc_result": acc_result}
 
@@ -144,15 +147,15 @@ def accuracy_doc_top(score, label, config, acc_result):
     # label: para_num
     if acc_result is None:
         acc_result = {'right': 0, 'pre_num': 0, 'actual_num': 0, 'labelset': 0, 'doc_num': 0}
-    # score_p = torch.softmax(score, dim = 1)
-    # pre_score, pre_res = torch.max(score_p, dim=1)
-    # predict = set()
-    # pre_score, pre_res = pre_score.tolist(), pre_res.tolist()
-    # for s, l in zip(pre_score, pre_res):
-    #     if s > 0.8 and l != 0:
-    #         predict.add(int(l))
-    pre_score, pre_res = torch.max(score, dim=1)
-    predict = set(pre_res.tolist()) - {0}
+    score_p = torch.softmax(score, dim = 1)
+    pre_score, pre_res = torch.max(score_p, dim=1)
+    predict = set()
+    pre_score, pre_res = pre_score.tolist(), pre_res.tolist()
+    for s, l in zip(pre_score, pre_res):
+        if s > 0.3 and l != 0:
+            predict.add(int(l))
+    # pre_score, pre_res = torch.max(score, dim=1)
+    # predict = set(pre_res.tolist()) - {0}
 
     # if len(predict) < 2:
     #     lmaxscore = torch.max(score, dim = 0)[0]
@@ -235,8 +238,11 @@ def accuracy(score, posscore, label, config, acc_result):
 def accuracy_per_label(score, label, config, acc_result):
     # score : para_num, class_num
     if acc_result is None:
-        acc_result = [{'right': 0, 'pre_num': 0, 'actual_num': 0} for i in range(len(label.shape[1]))]
-    pre_score, pre_res = torch.max(score, dim=1)
+        acc_result = [{'right': 0, 'pre_num': 0, 'actual_num': 0} for i in range(score.shape[1])]
+    score_p = torch.softmax(score, dim = 1)
+    pre_score, pre_res = torch.max(score_p, dim=1)
+    # pre_score, pre_res = torch.max(score, dim=1)
+    pre_res[pre_score <= 0.3] = 0
     llist = set(label.tolist())
     for l in llist:
         if l == 0:

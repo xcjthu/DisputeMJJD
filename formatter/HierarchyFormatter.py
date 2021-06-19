@@ -1,4 +1,4 @@
-from transformers import BertTokenizer,RobertaTokenizer
+from transformers import BertTokenizer,RobertaTokenizer, AutoTokenizer
 import json
 import torch
 import os
@@ -12,7 +12,8 @@ class HierarchyFormatter(BasicFormatter):
         super().__init__(config, mode, *args, **params)
         self.max_len = config.getint("train", "max_len")
         self.mode = mode
-        self.tokenizer = BertTokenizer.from_pretrained('hfl/chinese-roberta-wwm-ext')
+        # self.tokenizer = BertTokenizer.from_pretrained('hfl/chinese-roberta-wwm-ext')
+        self.tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-legal-electra-large-discriminator")
 
         labels = json.load(open(config.get('data', 'label2num'), 'r'))
         self.label2id = {'NA': 0}
